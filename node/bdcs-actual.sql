@@ -1,15 +1,14 @@
-﻿drop database if exists bdcs;
+drop database if exists bdcs;
 create  database bdcs;
 use bdcs;
-
 -- phpMyAdmin SQL Dump
 -- version 4.5.1
 -- http://www.phpmyadmin.net
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 19-07-2017 a las 03:38:32
--- Versión del servidor: 10.1.19-MariaDB
--- Versión de PHP: 5.6.28
+-- Tiempo de generación: 01-08-2017 a las 01:02:27
+-- Versión del servidor: 10.1.16-MariaDB
+-- Versión de PHP: 5.6.24
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET time_zone = "+00:00";
@@ -41,7 +40,8 @@ CREATE TABLE `almacen` (
 
 INSERT INTO `almacen` (`idAlmacen`, `IdEmpleado`) VALUES
 (1, 3),
-(2, 4);
+(2, 4),
+(3, 5);
 
 -- --------------------------------------------------------
 
@@ -52,19 +52,17 @@ INSERT INTO `almacen` (`idAlmacen`, `IdEmpleado`) VALUES
 CREATE TABLE `almacenequipo` (
   `IdAlmacen` int(11) NOT NULL,
   `IdEquipo` int(11) NOT NULL,
-  `IdItem` int(11) NOT NULL,
-  `Serie` int(11) DEFAULT NULL
+  `Cantidad` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 
 --
 -- Volcado de datos para la tabla `almacenequipo`
 --
 
-INSERT INTO `almacenequipo` (`IdAlmacen`, `IdEquipo`, `IdItem`, `Serie`) VALUES
-(1, 2, 1, 1829304783),
-(1, 2, 2, 1827405283),
-(1, 3, 1, 1898324927),
-(2, 3, 1, 1897398297);
+INSERT INTO `almacenequipo` (`IdAlmacen`, `IdEquipo`, `Cantidad`) VALUES
+(1, 2,3),
+(1, 3,6),
+(2, 3,2);
 
 -- --------------------------------------------------------
 
@@ -75,27 +73,30 @@ INSERT INTO `almacenequipo` (`IdAlmacen`, `IdEquipo`, `IdItem`, `Serie`) VALUES
 CREATE TABLE `cliente` (
   `idCliente` int(11) NOT NULL,
   `direccion` varchar(100) COLLATE utf8_spanish_ci NOT NULL,
+  `Latitud` decimal(9,5) NOT NULL,
+  `Longitud` decimal(9,5) NOT NULL,
   `idPersona` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
-
+ insert into `cliente`(`idCliente`,`direccion`,`Latitud`,`Longitud`,`idPersona`) values
+  (1,'Calle Los Arces 206',-8.1284368,-79.0307369,5),
+  (2,'Avenida América Norte',-8.1082763,-79.0207743,6);
 --
 -- Volcado de datos para la tabla `cliente`
 --
 
-INSERT INTO `cliente` (`idCliente`, `direccion`, `idPersona`) VALUES
-(1, 'Calle  29 Barrio II Mz. V', 5);
 
 -- --------------------------------------------------------
 
 --
 -- Estructura de tabla para la tabla `empleado`
 --
-
+-- estado O: Ocupado, D: Desocupado
+--
 CREATE TABLE `empleado` (
   `idEmpleado` int(11) NOT NULL,
   `cargo` varchar(20) COLLATE utf8_spanish_ci NOT NULL,
   `estado` char(1) CHARACTER SET utf8 DEFAULT NULL,
-  `fechaIngreso` date DEFAULT NULL,
+  `fechaIngreso` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `idPersona` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 
@@ -104,27 +105,38 @@ CREATE TABLE `empleado` (
 --
 
 INSERT INTO `empleado` (`idEmpleado`, `cargo`, `estado`, `fechaIngreso`, `idPersona`) VALUES
-(1, 'Jefe de Logistica', 'O', NULL, 1),
-(2, 'Supervisor', 'O', NULL, 2),
-(3, 'Tecnico', 'D', NULL, 3),
-(4, 'Tecnico', 'D', NULL, 4),
-(5, 'Supervisor', 'D', NULL, 17),
-(6, 'Supervisor', 'D', NULL, 18),
-(7, 'Tecnico', 'D', NULL, 39);
+(1, 'Jefe de Logistica', 'O', '2017-06-28 01:02:23', 1),
+(2, 'Supervisor', 'O', '2017-06-28 01:02:23', 2),
+(3, 'Tecnico', 'D','2017-06-28 01:02:23', 3),
+(4, 'Tecnico', 'D', '2017-06-28 01:02:23', 4),
+(5, 'Tecnico', 'D', '2017-06-28 01:02:23', 5);
+
+
+--
+-- Disparadores `empleado`
+--
+DELIMITER $$
+CREATE TRIGGER `GenerarAlmacenUsuario` AFTER INSERT ON `empleado` FOR EACH ROW if new.cargo='Tecnico'
+then
+    insert into almacen(idEmpleado) values(new.idEmpleado);
+    INSERT INTO usuario(IdEmpleado,Usuario, Password,tipo) VALUES (NEW.IdEmpleado, concat('usuario',New.IdEmpleado,'000'), concat('pass123',NEW.IdEmpleado,'abc'),3);
+end if
+$$
+DELIMITER ;
 
 -- --------------------------------------------------------
 
 --
 -- Estructura de tabla para la tabla `equipo`
 --
-
+-- estado Habilitado, Deshabilitado
+--
 CREATE TABLE `equipo` (
   `id` int(11) NOT NULL,
   `codigoSap` char(11) COLLATE utf8_spanish_ci NOT NULL,
   `descripcion` varchar(100) COLLATE utf8_spanish_ci DEFAULT NULL,
   `stock` int(11) NOT NULL,
   `unidadMedida` varchar(50) COLLATE utf8_spanish_ci NOT NULL,
-  `Serializable` bit(1) DEFAULT b'1',
   `estado` varchar(30) COLLATE utf8_spanish_ci NOT NULL,
   `fechaRegistro` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
@@ -133,17 +145,41 @@ CREATE TABLE `equipo` (
 -- Volcado de datos para la tabla `equipo`
 --
 
-INSERT INTO `equipo` (`id`, `codigoSap`, `descripcion`, `stock`, `unidadMedida`, `Serializable`, `estado`, `fechaRegistro`) VALUES
-(2, '10097648425', 'Telefono', 5, 'unidad', b'1', 'Habilitado', '2017-06-27 05:00:00'),
-(3, '10975286743', 'Modem', 2, 'unidad', b'1', 'Habilitado', '2017-06-26 05:00:00'),
-(4, '85991200691', 'Reloj', 1, 'Unidades', b'1', 'Habilitado', '0000-00-00 00:00:00'),
-(7, '235', 'Reloj con mouse', 1, 'Unidad', b'1', 'Habilitado', '2017-07-01 23:25:18'),
-(11, '1234', 'Mouse', 25, 'Unidad', b'1', 'Habilitado', '2017-07-01 23:31:45'),
-(12, '5123465', 'Cable', 2, 'Unidad', b'1', 'Habilitado', '2017-07-01 23:34:26'),
-(13, '666', 'Tablet', 2, 'Unidad', b'1', 'Habilitado', '2017-07-01 23:34:27'),
-(14, '457878', 'Usb', 1, 'Unidad', b'1', 'Habilitado', '2017-07-01 23:39:02'),
-(32, '1053300413', 'Jordan', 2, 'U', b'1', 'H', '2017-07-02 00:32:50'),
-(34, '85991200691', 'Caja reloj', 1, 'Unidad', b'1', 'Habilitado', '2017-07-04 22:07:59');
+INSERT INTO `equipo` (`id`, `codigoSap`, `descripcion`, `stock`, `unidadMedida`, `estado`, `fechaRegistro`) VALUES
+(2, '10097648425', 'Telefono', 5, 'unidad', 'Habilitado', '2017-06-27'),
+(3, '10975286743', 'Modem', 2, 'unidad', 'Habilitado', '2017-06-26'),
+(4, '10406110271', 'ACCESS POINT DUAL BAND 2.4-5Ghz', 2, 'unidades', 'Habilitado', '2017-06-27'),
+(5, '10402150000', 'ALAMBRE PUENTE TP.2-0.5 BLANCO-ROJO', 300, 'metros', 'Habilitado', '2017-06-27'),
+(6, '00007931851', 'AMPLIFICADOR BAJO RUIDO OPTIMIZADO LNB', 20, 'unidades', 'Habilitado', '2017-06-27'),
+(7, '00004880430', 'ANTENA PARABOLICA DTH BDA KU-60 CM.DM', 44, 'unidades','Habilitado', '2017-06-27'),
+(8, '10402570023', 'BLOCK DE CONEXION PARA PROTECCION', 100, 'unidades','Habilitado', '2017-06-27'),
+(9, '10402580026', 'BLOCK TERMIN.D/COMUNICACS.2 MUELLS.C/GEL', 155, 'unidades','Habilitado', '2017-06-27'),
+(10, '10402510011', 'CABLE ACOMETIDA AUTOSOPORTADO 1 PAR', 2000, 'metros','Habilitado', '2017-06-27'),
+(11, '00007520097', 'CABLE COAXIAL PE-CU RG-11 AL 90%', 300, 'metros','Habilitado', '2017-06-27'),
+(12, '00007520080', 'CABLE COAXIAL RG-6 TRISHIELD C/MENSAJERO', 500, 'metros','Habilitado', '2017-06-27'),
+(13, '00007520111', 'CABLE COAXIAL RG-6 TRISHIELD S/MENSAJERO', 1000, 'metros','Habilitado', '2017-06-27'),
+(14, '10402510012', 'CABLE INTERIOR 2 CONDUCTORES', 900, 'metros','Habilitado', '2017-06-27'),
+(15, '00001520020', 'CABLE UTP CAT.5E 24AWG 4P 155MHZ.', 100, 'metros', 'Habilitado', '2017-06-27'),
+(16, '10402150006', 'CABLE UTP CAT.5e 24AWG 4P 200MHZ', 40, 'metros','Habilitado', '2017-06-27'),
+(17, '10407930046', 'CABLEMODEM DOCSIS 3', 50, 'unidades','Habilitado', '2017-06-27'),
+(18, '10402610264', 'CINTILLO NYLON NUMERADO AMARILLO', 60, 'unidades','Habilitado', '2017-06-27'),
+(19, '00007931021', 'CONECTOR AXIAL RG-6', 3000, 'unidades','Habilitado', '2017-06-27'),
+(20, '10407110539', 'CONTROL REMOTO UNIVERSARL (MULTIMARCA)', 500, 'unidades','Habilitado', '2017-06-27'),
+(21, '10407110512', 'DECODIFICADOR CATV- HD BASICO', 50, 'unidades','Habilitado', '2017-06-27'),
+(22, '00007870141', 'TARJETA INTELIGENTE DTH', 100, 'unidades','Habilitado', '2017-06-27'),
+(23, '10401500172', 'TELEFONO ESTANDAR', 80, 'unidades','Habilitado', '2017-06-27'),
+(24, '10406100177', 'MODEM RESIDENCIAL VDSL C VOIP', 60, 'unidades', 'Habilitado', '2017-06-27'),
+(25, '10402510041', 'GRAPA CABLE COAXIAL INTERIOR', 10, 'cajas', 'Habilitado', '2017-06-27'),
+(26, '10402560119', 'TEMPLADOR TP."P" PARA ALAMBRE DE BAJADA', 500, 'unidades','Habilitado', '2017-06-27'),
+(27, '10402560112', 'GRAPA DOS CLAVOS A2 21 mm MARFIL', 1000, 'unidades','Habilitado', '2017-06-27'),
+(28, '85991200691', 'Reloj', 1, 'Unidades', 'Habilitado', '0000-00-00 00:00:00'),
+(29, '00000000235', 'Reloj con mouse', 1, 'Unidad', 'Habilitado', '2017-07-01 23:25:18'),
+(30, '00000001234', 'Mouse', 25, 'Unidad', 'Habilitado', '2017-07-01 23:31:45'),
+(31, '00005123465', 'Cable', 2, 'Unidad', 'Habilitado', '2017-07-01 23:34:26'),
+(32, '00000000666', 'Tablet', 2, 'Unidad', 'Habilitado', '2017-07-01 23:34:27'),
+(33, '00000457878', 'Usb', 1, 'Unidad', 'Habilitado', '2017-07-01 23:39:02'),
+(34, '01053300413', 'Jordan', 2, 'U', 'Habilitado', '2017-07-02 00:32:50'),
+(35, '85991200691', 'Caja reloj', 1, 'Unidad', 'Habilitado', '2017-07-04 22:07:59');
 
 -- --------------------------------------------------------
 
@@ -179,32 +215,67 @@ INSERT INTO `lote` (`idLote`, `codigo`, `fechaRegistro`) VALUES
 CREATE TABLE `loteequipo` (
   `IdLote` int(11) NOT NULL,
   `IdEquipo` int(11) NOT NULL,
-  `IdItem` int(11) NOT NULL,
-  `Serie` varchar(4) COLLATE utf8_spanish_ci DEFAULT NULL
+  `Cantidad` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 
 --
 -- Volcado de datos para la tabla `loteequipo`
 --
 
-INSERT INTO `loteequipo` (`IdLote`, `IdEquipo`, `IdItem`, `Serie`) VALUES
-(1, 2, 1, '1234'),
-(1, 2, 2, '123a'),
-(1, 3, 1, NULL);
+INSERT INTO `loteequipo` (`IdLote`, `IdEquipo`, `Cantidad`) VALUES
+(1, 2, 1),
+(1, 3, 1);
+
+--
+-- Disparadores `loteequipo`
+--
+DELIMITER $$
+CREATE TRIGGER `GenerarMoviemientoE` AFTER INSERT ON  `loteequipo` 
+FOR EACH
+ROW INSERT INTO MovimientoAlmacen( Tipomovimiento, IdEquipo, Cantidad  ) 
+VALUES ( 1, NEW.IdEquipo,  New.Cantidad );
+$$
+DELIMITER ;
+
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `movimientoalmacen`
+-- Estructura de tabla para la tabla `movimientoalmacen` TipoMovimiento 1 ingreso lotes principal, 0 intercambio principal almacen, 2 salida almacen
 --
 
 CREATE TABLE `movimientoalmacen` (
   `IdMovimiento` int(11) NOT NULL,
   `TipoMovimiento` int(11) NOT NULL,
   `IdEquipo` int(11) NOT NULL,
-  `Serie` varchar(10) COLLATE utf8_spanish_ci DEFAULT NULL,
-  `IdItem` int(11) NOT NULL
+  `Cantidad` int(11) NOT NULL,
+  `IdAlmacen` int(11) NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+--
+-- Disparadores `movimientoalmacen`
+--
+DELIMITER $$
+CREATE  TRIGGER `ActualizarStock` AFTER INSERT ON  `movimientoalmacen` 
+FOR EACH
+ROW if New.tipomovimiento=1 then
+update Equipo set stock=stock+New.cantidad where id=New.idEquipo;
+elseif New.tipomovimiento=0 then
+update Equipo set stock=stock-New.Cantidad where id=New.idEquipo;
+if(select count(*) from almacenequipo where idEquipo=New.idEquipo and idAlmacen=New.idAlmacen) =0 then
+insert into almacenequipo(IdAlmacen, IdEquipo, Cantidad) values (New.IdAlmacen, New.IdEquipo, New.Cantidad);
+else
+update almacenequipo set cantidad=cantidad+New.cantidad where idEquipo=New.idEquipo and idAlmacen=New.idAlmacen;
+end if;
+else update almacenequipo set cantidad=cantidad-New.cantidad where idEquipo=New.idEquipo and idAlmacen=New.idAlmacen;
+end if
+$$
+DELIMITER ;
+
+
+
+
+
 
 -- --------------------------------------------------------
 
@@ -231,39 +302,14 @@ INSERT INTO `persona` (`idPersona`, `nombres`, `apellidos`, `dni`, `email`, `tel
 (3, 'Pamela', 'Lizarraga Alvarez', '23456789', 'pamelaliza@gmail.com', '938517284'),
 (4, 'Jordyn', 'Toribio', '47281746', 'toribio12@gmail.com', '927848264'),
 (5, 'Elisabeth', 'Ruiz Mendoza', '48205352', 'elisabethrm@gmail.com', '948960285'),
-(6, 'Pamela', 'Lizarraga', '7030852', 'asd@bbhv.com', '140746988'),
-(7, 'Pamela', 'Lizarraga', '7030852', 'asd@bbhv.com', '140746988'),
-(8, 'Pamela', 'Lizarraga', '7030852', 'asd@bbhv.com', '140746988'),
-(17, 'Pamela', 'Lizarraga', '70204050', 'asd@bbhv.com.', '948796338'),
-(18, 'Monica', 'Lizarraga', '70405080', 'monica@ho.com', '974512356'),
-(19, 'Monicaa', 'Alvarez', '40404040', 'pabdbd@.com', '187546329'),
-(20, 'Monicaa', 'Alvarez', '40404040', 'pabdbd@.com', '963258741'),
-(21, 'Monicaa', 'Alvarez', '40508060', 'pabdbd@.com', '963258741'),
-(22, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258741'),
-(23, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258741'),
-(24, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258741'),
-(25, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258741'),
-(26, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258741'),
-(27, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258741'),
-(28, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '96325874'),
-(29, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258743'),
-(30, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258743'),
-(31, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258740'),
-(32, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258740'),
-(33, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258740'),
-(34, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258740'),
-(35, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258740'),
-(36, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258740'),
-(37, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258740'),
-(38, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258740'),
-(39, 'Monicaa', 'Alvarez', '40508060', 'monica@hotmail.com', '963258740');
+(6, 'Juan', 'Sanchez', '7030852', 'asd@hotmail.com', '140746988'),
+(7, 'Pedro', 'Alvarez', '40508060', 'monica@hotmail.com', '963258740');
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `servicio`
+-- Estructura de tabla para la tabla `servicio` idTipo  1 Cable, 2 Telefono, 3 Internet  estado  Registrado: 1, Asignado: 2, Atendido sin verificar: 3, Atendido con éxito:4, Atendido sin éxito: 5
 --
-
 CREATE TABLE `servicio` (
   `idServicio` int(11) NOT NULL,
   `descripcion` varchar(100) COLLATE utf8_spanish_ci NOT NULL,
@@ -273,15 +319,13 @@ CREATE TABLE `servicio` (
   `idEmpleado` int(11) NOT NULL,
   `fechaAtencion` date DEFAULT NULL,
   `fechaVerificacion` date DEFAULT NULL,
-  `fechaSolicitud` date NOT NULL
+  `fechaSolicitud` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 
 --
 -- Volcado de datos para la tabla `servicio`
 --
 
-INSERT INTO `servicio` (`idServicio`, `descripcion`, `idTipo`, `estado`, `idCliente`, `idEmpleado`, `fechaAtencion`, `fechaVerificacion`, `fechaSolicitud`) VALUES
-(4, 'Instalacion de internet', 3, 1, 1, 4, NULL, NULL, '2017-06-27');
 
 -- --------------------------------------------------------
 
@@ -292,61 +336,38 @@ INSERT INTO `servicio` (`idServicio`, `descripcion`, `idTipo`, `estado`, `idClie
 CREATE TABLE `servicioequipo` (
   `IdServicio` int(11) NOT NULL,
   `IdEquipo` int(11) NOT NULL,
-  `IdItem` int(11) NOT NULL,
-  `Serie` char(10) CHARACTER SET utf8 DEFAULT NULL
+  `Cantidad` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 
 --
 -- Volcado de datos para la tabla `servicioequipo`
 --
 
-INSERT INTO `servicioequipo` (`IdServicio`, `IdEquipo`, `IdItem`, `Serie`) VALUES
-(4, 2, 1, '9821371230');
+
+--
+-- Disparadores `almacenequipo`
+--
+DELIMITER $$
+CREATE  TRIGGER `GenerarMoviemientoS` AFTER INSERT ON  `servicioequipo` 
+FOR EACH
+ROW BEGIN 
+DECLARE empleado INT;
+declare almacen int;
+SELECT idempleado
+INTO empleado
+FROM servicio
+WHERE idservicio = NEW.IdServicio;
+select idalmacen into almacen from almacen where idempleado=empleado;
+INSERT INTO MovimientoAlmacen( Tipomovimiento, IdEquipo, Cantidad, IdAlmacen  ) 
+VALUES ( 2, NEW.IdEquipo, New.Cantidad, almacen );
+end
+$$
+DELIMITER ;
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `solicitudequipo`
---
 
-CREATE TABLE `solicitudequipo` (
-  `IdSolicitud` int(11) NOT NULL,
-  `IdEquipo` int(11) NOT NULL,
-  `Cantidad` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
-
---
--- Volcado de datos para la tabla `solicitudequipo`
---
-
-INSERT INTO `solicitudequipo` (`IdSolicitud`, `IdEquipo`, `Cantidad`) VALUES
-(1, 2, 2),
-(1, 3, 1);
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `solicitudprestamo`
---
-
-CREATE TABLE `solicitudprestamo` (
-  `IdSoilictud` int(11) NOT NULL,
-  `FechaSolicitud` date NOT NULL,
-  `Estado` int(11) DEFAULT '1',
-  `IdEmpleadoA` int(11) DEFAULT NULL,
-  `IdEmpleadoS` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
-
---
--- Volcado de datos para la tabla `solicitudprestamo`
---
-
-INSERT INTO `solicitudprestamo` (`IdSoilictud`, `FechaSolicitud`, `Estado`, `IdEmpleadoA`, `IdEmpleadoS`) VALUES
-(1, '2017-06-27', 1, NULL, 4);
-
--- --------------------------------------------------------
-
---
 -- Estructura de tabla para la tabla `tiposervicio`
 --
 
@@ -394,7 +415,7 @@ CREATE TABLE `ubicacion` (
   `IdUbicacion` int(11) NOT NULL,
   `Latitud` decimal(9,5) NOT NULL,
   `Longitud` decimal(9,5) NOT NULL,
-  `FechaRegistro` date NOT NULL,
+  `FechaRegistro` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `IdEmpleado` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 
@@ -408,9 +429,8 @@ INSERT INTO `ubicacion` (`IdUbicacion`, `Latitud`, `Longitud`, `FechaRegistro`, 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `usuario`
+-- Estructura de tabla para la tabla `usuario` tipo(1, 'Jefe de Logistica'),(2, 'Supervisor'),(3, 'Tecnico');
 --
-
 CREATE TABLE `usuario` (
   `idUsuario` int(11) NOT NULL,
   `idEmpleado` int(11) NOT NULL,
@@ -429,8 +449,51 @@ INSERT INTO `usuario` (`idUsuario`, `idEmpleado`, `usuario`, `password`, `tipo`,
 (2, 2, 'cdelgadoc', 'cristhian', 2, 'dggK-5c8Eic:APA91bGu7wT1qAEuUJ39uhqb6OrhpGJ9IffsvgtDyF9jBcHUZbUff0R2rgvRqqgiGGbXadMV339raoCzC1zyxdCWd2BgrEvY8q6VH2mMSzCh1ML28sQ3uCN9Ql6eiMjiX2No1RuHlVot'),
 (3, 3, 'plizarragaa', 'pamela', 3, NULL),
 (4, 4, 'jtoribioe', 'jordyn', 3, NULL),
-(5, 7, 'monicasa', 'monica', 3, NULL);
+(5, 5, 'elisabethrm', 'elisabeth1234', 3, NULL);
 
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `lote`
+--
+
+CREATE TABLE `abastecimiento` (
+  `idAbastecimiento` int(11) NOT NULL,
+  `idAlmacen` int(11) NOT NULL,
+  `codigo` char(10) CHARACTER SET utf8 DEFAULT NULL,
+  `fechaRegistro` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `loteequipo`
+--
+
+CREATE TABLE `abastecimientoequipo` (
+  `idAbastecimiento` int(11) NOT NULL,
+  `IdEquipo` int(11) NOT NULL,
+  `Cantidad` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
+
+
+--
+-- Disparadores `loteequipo`
+--
+
+
+DELIMITER $$
+CREATE TRIGGER `GenerarMovimientoI` AFTER INSERT ON  `abastecimientoequipo` 
+FOR EACH
+ROW
+begin
+declare almacen int;
+select idalmacen into almacen from abastecimiento where idabastecimiento=NEW.Idabastecimiento; 
+INSERT INTO MovimientoAlmacen( Tipomovimiento, IdEquipo, Cantidad, IdAlmacen  ) 
+VALUES ( 0, NEW.IdEquipo,  New.Cantidad, almacen );
+end
+$$
+DELIMITER ;
 --
 -- Índices para tablas volcadas
 --
@@ -446,7 +509,7 @@ ALTER TABLE `almacen`
 -- Indices de la tabla `almacenequipo`
 --
 ALTER TABLE `almacenequipo`
-  ADD PRIMARY KEY (`IdAlmacen`,`IdEquipo`,`IdItem`),
+  ADD PRIMARY KEY (`idAlmacen`,`IdEquipo`),
   ADD KEY `FK_AlmacenEquipo_equipo` (`IdEquipo`);
 
 --
@@ -479,8 +542,23 @@ ALTER TABLE `lote`
 -- Indices de la tabla `loteequipo`
 --
 ALTER TABLE `loteequipo`
-  ADD PRIMARY KEY (`IdLote`,`IdEquipo`,`IdItem`),
+  ADD PRIMARY KEY (`IdLote`,`IdEquipo`),
   ADD KEY `FK_LoteEquipo_equipo` (`IdEquipo`);
+
+
+--
+-- Indices de la tabla `lote`
+--
+ALTER TABLE `abastecimiento`
+  ADD PRIMARY KEY (`idAbastecimiento`),
+  ADD KEY `almacen_abastecimiento` (`idAlmacen`);
+
+--
+-- Indices de la tabla `loteequipo`
+--
+ALTER TABLE `abastecimientoequipo`
+  ADD PRIMARY KEY (`idAbastecimiento`,`IdEquipo`),
+  ADD KEY `FK_AbastecimientoEquipo_equipo` (`IdEquipo`);
 
 --
 -- Indices de la tabla `movimientoalmacen`
@@ -508,22 +586,9 @@ ALTER TABLE `servicio`
 -- Indices de la tabla `servicioequipo`
 --
 ALTER TABLE `servicioequipo`
-  ADD PRIMARY KEY (`IdServicio`,`IdEquipo`,`IdItem`),
+  ADD PRIMARY KEY (`IdServicio`,`IdEquipo`),
   ADD KEY `FK_ServicioEquipo_equipo` (`IdEquipo`);
 
---
--- Indices de la tabla `solicitudequipo`
---
-ALTER TABLE `solicitudequipo`
-  ADD PRIMARY KEY (`IdSolicitud`,`IdEquipo`),
-  ADD KEY `FK_SolicitudEquipo_equipo` (`IdEquipo`);
-
---
--- Indices de la tabla `solicitudprestamo`
---
-ALTER TABLE `solicitudprestamo`
-  ADD PRIMARY KEY (`IdSoilictud`),
-  ADD KEY `FK_SolicitudPrestamo_empleado` (`IdEmpleadoS`);
 
 --
 -- Indices de la tabla `tiposervicio`
@@ -560,27 +625,32 @@ ALTER TABLE `usuario`
 -- AUTO_INCREMENT de la tabla `almacen`
 --
 ALTER TABLE `almacen`
-  MODIFY `idAlmacen` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `idAlmacen` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 --
 -- AUTO_INCREMENT de la tabla `cliente`
 --
 ALTER TABLE `cliente`
-  MODIFY `idCliente` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `idCliente` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 --
 -- AUTO_INCREMENT de la tabla `empleado`
 --
 ALTER TABLE `empleado`
-  MODIFY `idEmpleado` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `idEmpleado` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 --
 -- AUTO_INCREMENT de la tabla `equipo`
 --
 ALTER TABLE `equipo`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 --
 -- AUTO_INCREMENT de la tabla `lote`
 --
 ALTER TABLE `lote`
   MODIFY `idLote` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+--
+-- AUTO_INCREMENT de la tabla `lote`
+--
+ALTER TABLE `abastecimiento`
+  MODIFY `idAbastecimiento` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
 --
 -- AUTO_INCREMENT de la tabla `movimientoalmacen`
 --
@@ -590,17 +660,13 @@ ALTER TABLE `movimientoalmacen`
 -- AUTO_INCREMENT de la tabla `persona`
 --
 ALTER TABLE `persona`
-  MODIFY `idPersona` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
+  MODIFY `idPersona` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 --
 -- AUTO_INCREMENT de la tabla `servicio`
 --
 ALTER TABLE `servicio`
-  MODIFY `idServicio` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `idServicio` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
 --
--- AUTO_INCREMENT de la tabla `solicitudprestamo`
---
-ALTER TABLE `solicitudprestamo`
-  MODIFY `IdSoilictud` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 --
 -- AUTO_INCREMENT de la tabla `tiposervicio`
 --
@@ -635,7 +701,7 @@ ALTER TABLE `almacen`
 -- Filtros para la tabla `almacenequipo`
 --
 ALTER TABLE `almacenequipo`
-  ADD CONSTRAINT `FK_AlmacenEquipo_almacen` FOREIGN KEY (`IdAlmacen`) REFERENCES `almacen` (`idAlmacen`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `FK_AlmacenEquipo_almacen` FOREIGN KEY (`idAlmacen`) REFERENCES `almacen` (`idAlmacen`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `FK_AlmacenEquipo_equipo` FOREIGN KEY (`IdEquipo`) REFERENCES `equipo` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
@@ -648,14 +714,26 @@ ALTER TABLE `cliente`
 -- Filtros para la tabla `empleado`
 --
 ALTER TABLE `empleado`
-  ADD CONSTRAINT `persona_empleado` FOREIGN KEY (`idPersona`) REFERENCES `persona` (`idPersona`) ON DELETE NO ACTION ON UPDATE NO ACTION;
+  ADD CONSTRAINT `persona_empleado` FOREIGN KEY (`idPersona`) REFERENCES `persona` (`idPersona`) ON DELETE CASCADE ON UPDATE CASCADE;
 
+--
+-- Filtros para la tabla `empleado`
+--
+ALTER table `abastecimiento`
+  add CONSTRAINT `almacen_abastecimiento` FOREIGN KEY (`IdAlmacen`) REFERENCES `almacen` (`idAlmacen`) on DELETE CASCADE on UPDATE CASCADE;
 --
 -- Filtros para la tabla `loteequipo`
 --
 ALTER TABLE `loteequipo`
   ADD CONSTRAINT `FK_LoteEquipo_equipo` FOREIGN KEY (`IdEquipo`) REFERENCES `equipo` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `FK_LoteEquipo_lote` FOREIGN KEY (`IdLote`) REFERENCES `lote` (`idLote`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `loteequipo`
+--
+ALTER TABLE `abastecimientoequipo`
+  ADD CONSTRAINT `FK_AbastecimientoEquipo_equipo` FOREIGN KEY (`IdEquipo`) REFERENCES `equipo` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `FK_AbastecimientoEquipo_abastecimiento` FOREIGN KEY (`idAbastecimiento`) REFERENCES `abastecimiento` (`idAbastecimiento`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `movimientoalmacen`
@@ -667,7 +745,9 @@ ALTER TABLE `movimientoalmacen`
 -- Filtros para la tabla `servicio`
 --
 ALTER TABLE `servicio`
-  ADD CONSTRAINT `servicio_ibfk_1` FOREIGN KEY (`idTipo`) REFERENCES `tiposervicio` (`IdTipoServicio`);
+  ADD CONSTRAINT `FK_servicio_TipoServicio` FOREIGN KEY (`idTipo`) REFERENCES `tiposervicio` (`IdTipoServicio`),
+  ADD CONSTRAINT `FK_servicio_empleado` FOREIGN KEY (`idEmpleado`) REFERENCES `empleado` (`idEmpleado`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `cliente_servicio` FOREIGN KEY (`idCliente`) REFERENCES `cliente` (`idCliente`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `servicioequipo`
@@ -675,20 +755,9 @@ ALTER TABLE `servicio`
 ALTER TABLE `servicioequipo`
   ADD CONSTRAINT `FK_ServicioEquipo_equipo` FOREIGN KEY (`IdEquipo`) REFERENCES `equipo` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `FK_ServicioEquipo_servicio` FOREIGN KEY (`IdServicio`) REFERENCES `servicio` (`idServicio`) ON DELETE CASCADE ON UPDATE CASCADE;
-
+ 
 --
 -- Filtros para la tabla `solicitudequipo`
---
-ALTER TABLE `solicitudequipo`
-  ADD CONSTRAINT `FK_SolicitudEquipo_SolicitudPrestamo` FOREIGN KEY (`IdSolicitud`) REFERENCES `solicitudprestamo` (`IdSoilictud`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `FK_SolicitudEquipo_equipo` FOREIGN KEY (`IdEquipo`) REFERENCES `equipo` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
---
--- Filtros para la tabla `solicitudprestamo`
---
-ALTER TABLE `solicitudprestamo`
-  ADD CONSTRAINT `FK_SolicitudPrestamo_empleado` FOREIGN KEY (`IdEmpleadoS`) REFERENCES `empleado` (`idEmpleado`) ON DELETE CASCADE ON UPDATE CASCADE;
-
 --
 -- Filtros para la tabla `ubicacion`
 --
@@ -700,8 +769,7 @@ ALTER TABLE `ubicacion`
 --
 ALTER TABLE `usuario`
   ADD CONSTRAINT `FK_usuario_TipoUsuario` FOREIGN KEY (`tipo`) REFERENCES `tipousuario` (`IdTipoUsuario`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `empleado_usuario` FOREIGN KEY (`idEmpleado`) REFERENCES `empleado` (`idEmpleado`) ON DELETE NO ACTION ON UPDATE NO ACTION;
-
+  ADD CONSTRAINT `empleado_usuario` FOREIGN KEY (`idEmpleado`) REFERENCES `empleado` (`idEmpleado`) ON DELETE CASCADE ON UPDATE CASCADE;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
